@@ -1,0 +1,9 @@
+node_modules/
+# 錄音資料不進版本庫(部署後存在 Railway Volume)
+data/original/*
+data/processed/*
+data/metadata.csv
+!data/original/.gitkeep
+!data/processed/.gitkeep
+.DS_Store
+*.log

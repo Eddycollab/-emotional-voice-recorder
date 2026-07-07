@@ -1,0 +1,17 @@
+{
+  "source": "VIA-SEL-v1",
+  "scripts": [
+    { "id": "S001", "emotion": "happy",    "text": "今天老師稱讚我畫的圖,我覺得好開心!" },
+    { "id": "S002", "emotion": "happy",    "text": "耶!放學後可以去公園玩溜滑梯了!" },
+    { "id": "S003", "emotion": "sad",      "text": "我的氣球飛走了,我好難過。" },
+    { "id": "S004", "emotion": "sad",      "text": "小狗生病了,我想哭。" },
+    { "id": "S005", "emotion": "angry",    "text": "他搶走我的玩具,我真的好生氣!" },
+    { "id": "S006", "emotion": "angry",    "text": "為什麼每次都要弄壞我的積木!" },
+    { "id": "S007", "emotion": "fear",     "text": "打雷的聲音好大,我好害怕。" },
+    { "id": "S008", "emotion": "fear",     "text": "房間好黑,我不敢一個人進去。" },
+    { "id": "S009", "emotion": "surprise", "text": "哇!你怎麼會在這裡,嚇我一跳!" },
+    { "id": "S010", "emotion": "surprise", "text": "咦?我的杯子怎麼變成藍色的了?" },
+    { "id": "S011", "emotion": "neutral",  "text": "我今天早上吃了吐司和牛奶。" },
+    { "id": "S012", "emotion": "neutral",  "text": "明天星期三,我們要上美勞課。" }
+  ]
+}

@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taiwan Voice Recorder · SEL 情緒語音資料集</title>
+<style>
+  :root {
+    --bg: #191714;
+    --panel: #23201b;
+    --panel-2: #2b2721;
+    --line: #3a352c;
+    --ink: #ede6d8;
+    --muted: #8f877a;
+    --green: #7fb069;
+    --amber: #f2a541;
+    --red: #d64545;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+    --sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  header {
+    width: 100%;
+    max-width: 760px;
+    padding: 20px 24px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  header h1 { font-size: 15px; font-weight: 700; letter-spacing: .08em; }
+  header h1 span { color: var(--red); }
+  header .session { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+  main { width: 100%; max-width: 760px; padding: 16px 24px 48px; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 16px;
+  }
+
+  /* ---- 開場設定 ---- */
+  .setup label { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 6px; }
+  .setup input {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+  }
+  .setup input:focus { outline: 2px solid var(--amber); outline-offset: 1px; border-color: transparent; }
+
+  .script-upload {
+    margin-top: 22px;
+    padding: 16px;
+    border: 1px dashed var(--line);
+    border-radius: 10px;
+    background: var(--panel-2);
+  }
+  .script-upload > label { margin-top: 0 !important; color: var(--ink) !important; font-weight: 700; }
+  .upload-hint { font-size: 12px; color: var(--muted); margin: 6px 0 12px; line-height: 1.6; }
+  .upload-hint code { font-family: var(--mono); color: var(--amber); }
+  .upload-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .upload-row input[type="file"] { flex: 1 1 220px; font-size: 13px; padding: 8px; }
+  .upload-row #uploadToken { flex: 1 1 180px; }
+  .upload-row button { padding: 10px 16px; font-size: 14px; }
+  .upload-result { font-size: 13px; margin-top: 10px; min-height: 1.2em; }
+  .upload-result.ok { color: var(--green); }
+  .upload-result.err { color: var(--red); }
+
+  /* ---- 資料集面板 ---- */
+  .dataset-btn {
+    padding: 6px 12px; font-size: 13px; font-weight: 700;
+    background: transparent; border: 1px solid var(--line); border-radius: 8px;
+  }
+  .ds-toolbar { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .ds-toolbar input {
+    flex: 1 1 220px; background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 8px; padding: 9px 12px; color: var(--ink); font-size: 14px;
+  }
+  .ds-toolbar button { padding: 9px 16px; font-size: 14px; }
+  .ds-downloads { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+  .ds-dl-label { font-size: 13px; color: var(--muted); }
+  .ds-dl { padding: 7px 14px; font-size: 13px; }
+  .ds-list { margin-top: 16px; max-height: 420px; overflow-y: auto; }
+  .ds-empty { color: var(--muted); font-size: 13px; padding: 12px 0; }
+  .ds-row {
+    display: flex; gap: 12px; align-items: center;
+    padding: 10px 12px; border-bottom: 1px solid var(--line);
+  }
+  .ds-row:hover { background: var(--panel-2); }
+  .ds-row .ds-emo { flex: 0 0 62px; font-size: 12px; font-weight: 700; text-align: center;
+    border: 1px solid currentColor; border-radius: 999px; padding: 2px 0; }
+  .ds-row .ds-text { flex: 1; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ds-row .ds-meta { font-family: var(--mono); font-size: 11px; color: var(--muted); flex: 0 0 auto; }
+  .ds-row .ds-play { padding: 6px 12px; font-size: 13px; flex: 0 0 auto; }
+  #dsPlayer { margin-top: 14px; }
+
+  /* ---- 腳本卡 ---- */
+  .progress-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .progress-bar {
+    flex: 1;
+    height: 3px;
+    background: var(--line);
+    border-radius: 2px;
+    margin: 0 14px;
+    overflow: hidden;
+  }
+  .progress-bar i { display: block; height: 100%; background: var(--amber); width: 0; transition: width .3s; }
+
+  .emotion-chip {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    border: 1px solid currentColor;
+  }
+  .script-text {
+    font-size: 30px;
+    line-height: 1.55;
+    font-weight: 500;
+    margin: 16px 0 8px;
+    min-height: 3.1em;
+  }
+  .script-hint { font-size: 13px; color: var(--muted); }
+
+  /* ---- VU 音量表 ---- */
+  .vu {
+    margin-top: 20px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px 10px;
+  }
+  .vu-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .vu-label { font-family: var(--mono); font-size: 11px; letter-spacing: .15em; color: var(--muted); }
+  .vu-db { font-family: var(--mono); font-size: 13px; color: var(--ink); }
+  .vu-track {
+    position: relative;
+    height: 18px;
+    border-radius: 4px;
+    background:
+      linear-gradient(to right,
+        color-mix(in srgb, var(--green) 18%, transparent) 0 62%,
+        color-mix(in srgb, var(--amber) 18%, transparent) 62% 86%,
+        color-mix(in srgb, var(--red) 18%, transparent) 86% 100%);
+    overflow: hidden;
+  }
+  .vu-fill {
+    position: absolute; inset: 0 auto 0 0;
+    width: 0%;
+    background: linear-gradient(to right, var(--green) 0 62%, var(--amber) 62% 86%, var(--red) 86% 100%);
+    background-size: 100vw 100%;
+    transition: width 60ms linear;
+  }
+  .vu-peak {
+    position: absolute; top: 0; bottom: 0;
+    width: 2px; background: var(--ink);
+    left: 0%; transition: left 120ms;
+  }
+  .vu-scale {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 10px; color: var(--muted);
+    margin-top: 4px;
+  }
+  .vu-status {
+    margin-top: 10px;
+    font-size: 13px;
+    min-height: 1.4em;
+  }
+  .vu-status.ok    { color: var(--green); }
+  .vu-status.warn  { color: var(--amber); }
+  .vu-status.bad   { color: var(--red); }
+
+  /* ---- 控制列 ---- */
+  .controls {
+    display: flex;
+    gap: 12px;
+    margin-top: 22px;
+    flex-wrap: wrap;
+  }
+  button {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 700;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 20px;
+    background: var(--panel-2);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--muted); }
+  button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  button:disabled { opacity: .35; cursor: not-allowed; }
+  button.rec {
+    background: var(--red); border-color: var(--red); color: #fff;
+    padding-left: 36px; position: relative;
+  }
+  button.rec::before {
+    content: ""; position: absolute; left: 16px; top: 50%;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #fff; transform: translateY(-50%);
+  }
+  button.rec.live::before { animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .2; } }
+  @media (prefers-reduced-motion: reduce) { button.rec.live::before { animation: none; } }
+  button.primary { background: var(--amber); border-color: var(--amber); color: #191714; }
+
+  .timer { font-family: var(--mono); font-size: 14px; color: var(--muted); align-self: center; }
+
+  /* ---- 品質檢查結果 ---- */
+  .verdict {
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    display: none;
+  }
+  .verdict.show { display: block; }
+  .verdict.ok   { background: color-mix(in srgb, var(--green) 12%, transparent); color: var(--green); }
+  .verdict.warn { background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); }
+  .verdict.bad  { background: color-mix(in srgb, var(--red) 12%, transparent);  color: var(--red); }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 18px; font-size: 14px;
+    opacity: 0; pointer-events: none; transition: opacity .3s;
+  }
+  .toast.show { opacity: 1; }
+
+  .done { text-align: center; padding: 48px 24px; }
+  .done h2 { font-size: 24px; margin-bottom: 10px; }
+  .done p { color: var(--muted); font-family: var(--mono); font-size: 13px; }
+
+  .hidden { display: none !important; }
+  audio { width: 100%; margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>TAIWAN VOICE RECORDER <span>●</span> SEL</h1>
+  <div style="display:flex;align-items:center;gap:14px">
+    <div class="session" id="sessionInfo"></div>
+    <button class="dataset-btn" id="datasetBtn" type="button">📼 資料集</button>
+  </div>
+</header>
+
+<main>
+  <!-- 步驟一:錄音者資訊 -->
+  <section class="card setup" id="setupCard">
+    <div class="progress-row"><span>SESSION SETUP</span></div>
+    <label for="speaker">錄音者代號 speaker *</label>
+    <input id="speaker" placeholder="例如:SPK01 或 小明" autocomplete="off">
+    <label for="age">年齡 age</label>
+    <input id="age" type="number" min="1" max="120" placeholder="例如:5">
+    <label for="notes">備註 notes</label>
+    <input id="notes" placeholder="例如:安靜室內、USB 麥克風" autocomplete="off">
+
+    <div class="script-upload">
+      <label>自訂錄音腳本(可選)— 支援 PDF / Word(.docx)/ TXT / JSON</label>
+      <p class="upload-hint">檔案內每行一句,格式:<code>情緒|句子</code>(如 <code>開心|今天天氣真好</code>),情緒可用中英文;沒有標記的句子視為中性。</p>
+      <div class="upload-row">
+        <input type="file" id="scriptFile" accept=".pdf,.docx,.txt,.csv,.json">
+        <input id="uploadToken" placeholder="管理 token(伺服器有設定才需填)" autocomplete="off">
+        <button id="uploadScriptBtn" type="button">上傳腳本</button>
+      </div>
+      <p class="upload-result" id="uploadResult"></p>
+    </div>
+
+    <div class="controls">
+      <button class="primary" id="startSessionBtn">開始錄音工作</button>
+    </div>
+  </section>
+
+  <!-- 步驟二:錄音主畫面 -->
+  <section class="card hidden" id="recorderCard">
+    <div class="progress-row">
+      <span id="progressLabel">0 / 0</span>
+      <div class="progress-bar"><i id="progressFill"></i></div>
+      <span id="scriptIdLabel"></span>
+    </div>
+
+    <span class="emotion-chip" id="emotionChip"></span>
+    <p class="script-text" id="scriptText"></p>
+    <p class="script-hint">請以此情緒自然唸出上方句子,錄音鍵按下後開始。</p>
+
+    <div class="vu">
+      <div class="vu-top">
+        <span class="vu-label">INPUT LEVEL</span>
+        <span class="vu-db" id="dbLabel">-∞ dB</span>
+      </div>
+      <div class="vu-track">
+        <div class="vu-fill" id="vuFill"></div>
+        <div class="vu-peak" id="vuPeak"></div>
+      </div>
+      <div class="vu-scale"><span>-60</span><span>-40</span><span>-24</span><span>-12</span><span>-6</span><span>0 dB</span></div>
+      <div class="vu-status" id="vuStatus"></div>
+    </div>
+
+    <div class="controls">
+      <button class="rec" id="recordBtn">錄音</button>
+      <button id="stopBtn" disabled>停止</button>
+      <button id="playBtn" disabled>播放</button>
+      <button id="retakeBtn" disabled>重錄</button>
+      <button class="primary" id="uploadBtn" disabled>上傳並下一句</button>
+      <span class="timer" id="timer">00:00</span>
+    </div>
+
+    <div class="verdict" id="verdict"></div>
+    <audio id="player" controls class="hidden"></audio>
+  </section>
+
+  <!-- 資料集面板:隨時可開,試聽與下載 -->
+  <section class="card hidden" id="datasetCard">
+    <div class="progress-row"><span>DATASET</span><span id="datasetCount"></span></div>
+
+    <div class="ds-toolbar">
+      <input id="dsToken" placeholder="管理 token(伺服器未設定可留空)" autocomplete="off">
+      <button id="dsRefreshBtn" type="button">載入清單</button>
+    </div>
+
+    <div class="ds-downloads">
+      <span class="ds-dl-label">下載整包:</span>
+      <button class="ds-dl" data-format="wav" type="button">WAV 24kHz</button>
+      <button class="ds-dl" data-format="mp3" type="button">MP3</button>
+      <button class="ds-dl" data-format="webm" type="button">WebM 原始</button>
+      <button class="ds-dl" data-format="all" type="button">全部</button>
+    </div>
+
+    <audio id="dsPlayer" controls class="hidden"></audio>
+    <div class="ds-list" id="dsList"><p class="ds-empty">按「載入清單」查看已錄音檔</p></div>
+  </section>
+
+  <!-- 步驟三:完成 -->
+  <section class="card done hidden" id="doneCard">
+    <h2>本組腳本已全部錄製完成 🎉</h2>
+    <p id="doneStats"></p>
+    <div class="controls" style="justify-content:center">
+      <button class="primary" id="restartBtn">錄下一位錄音者</button>
+      <button id="doneDatasetBtn" type="button">📼 試聽與下載資料集</button>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= 狀態 ================= */
+const state = {
+  scripts: [], source: 'VIA-SEL-v1', idx: 0,
+  speaker: '', age: '', notes: '',
+  mediaRecorder: null, chunks: [], blob: null,
+  audioCtx: null, analyser: null, stream: null, rafId: null,
+  startTime: 0, timerId: null,
+  // 品質統計(以 dBFS 收集)
+  frames: [], peakAbs: 0, clipCount: 0,
+  uploaded: 0,
+};
+
+const EMOTION_META = {
+  happy:    { zh: '開心',  color: '#f2a541' },
+  sad:      { zh: '難過',  color: '#6fa8dc' },
+  angry:    { zh: '生氣',  color: '#d64545' },
+  fear:     { zh: '害怕',  color: '#a78bda' },
+  surprise: { zh: '驚訝',  color: '#7fb069' },
+  neutral:  { zh: '中性',  color: '#8f877a' },
+};
+
+const $ = id => document.getElementById(id);
+
+/* ================= 初始化 ================= */
+async function init() {
+  const res = await fetch('/api/scripts');
+  const data = await res.json();
+  state.scripts = data.scripts;
+  state.source = data.source || 'VIA-SEL-v1';
+  $('sessionInfo').textContent = state.source;
+}
+init();
+
+/* ================= 腳本上傳 ================= */
+$('uploadScriptBtn').addEventListener('click', async () => {
+  const file = $('scriptFile').files[0];
+  const result = $('uploadResult');
+  if (!file) { result.className = 'upload-result err'; result.textContent = '請先選擇腳本檔案'; return; }
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('token', $('uploadToken').value.trim());
+
+  $('uploadScriptBtn').disabled = true;
+  result.className = 'upload-result'; result.textContent = '解析中…';
+  try {
+    const res = await fetch('/api/scripts/upload', { method: 'POST', body: fd });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || '上傳失敗');
+    await init(); // 重新載入腳本
+    result.className = 'upload-result ok';
+    result.textContent = `✔ 已載入 ${json.count} 句腳本` + (json.preview ? `,例如:「${json.preview[0].text}」(${json.preview[0].emotion})` : '');
+  } catch (e) {
+    result.className = 'upload-result err';
+    result.textContent = '✖ ' + e.message;
+  } finally {
+    $('uploadScriptBtn').disabled = false;
+  }
+});
+
+$('startSessionBtn').addEventListener('click', () => {
+  const speaker = $('speaker').value.trim();
+  if (!speaker) { toast('請填寫錄音者代號'); $('speaker').focus(); return; }
+  state.speaker = speaker;
+  state.age = $('age').value.trim();
+  state.notes = $('notes').value.trim();
+  state.idx = 0; state.uploaded = 0;
+  $('setupCard').classList.add('hidden');
+  $('recorderCard').classList.remove('hidden');
+  $('sessionInfo').textContent = `${state.source} · ${speaker}`;
+  renderScript();
+});
+
+$('restartBtn').addEventListener('click', () => location.reload());
+$('doneDatasetBtn').addEventListener('click', () => {
+  $('datasetCard').classList.remove('hidden');
+  if (!state.dsLoaded) loadRecordings();
+  $('datasetCard').scrollIntoView({ behavior: 'smooth' });
+});
+
+/* ================= 腳本顯示 ================= */
+function renderScript() {
+  const s = state.scripts[state.idx];
+  const meta = EMOTION_META[s.emotion] || { zh: s.emotion, color: '#8f877a' };
+  $('progressLabel').textContent = `${state.idx + 1} / ${state.scripts.length}`;
+  $('progressFill').style.width = `${(state.idx / state.scripts.length) * 100}%`;
+  $('scriptIdLabel').textContent = s.id;
+  $('emotionChip').textContent = `${meta.zh} ${s.emotion}`;
+  $('emotionChip').style.color = meta.color;
+  $('scriptText').textContent = s.text;
+  resetTake();
+}
+
+function resetTake() {
+  state.blob = null; state.chunks = [];
+  state.frames = []; state.peakAbs = 0; state.clipCount = 0;
+  $('recordBtn').disabled = false;
+  $('stopBtn').disabled = true;
+  $('playBtn').disabled = true;
+  $('retakeBtn').disabled = true;
+  $('uploadBtn').disabled = true;
+  $('player').classList.add('hidden');
+  $('player').removeAttribute('src');
+  $('verdict').className = 'verdict';
+  $('timer').textContent = '00:00';
+  $('vuFill').style.width = '0%';
+  $('vuPeak').style.left = '0%';
+  $('dbLabel').textContent = '-∞ dB';
+  setVuStatus('', '');
+}
+
+/* ================= 錄音 ================= */
+$('recordBtn').addEventListener('click', startRecording);
+$('stopBtn').addEventListener('click', stopRecording);
+$('retakeBtn').addEventListener('click', () => { resetTake(); startRecording(); });
+$('playBtn').addEventListener('click', () => { $('player').classList.remove('hidden'); $('player').play(); });
+
+async function startRecording() {
+  try {
+    state.stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    });
+  } catch (e) {
+    toast('無法取得麥克風權限:' + e.message);
+    return;
+  }
+
+  // 音量分析
+  state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const srcNode = state.audioCtx.createMediaStreamSource(state.stream);
+  state.analyser = state.audioCtx.createAnalyser();
+  state.analyser.fftSize = 2048;
+  srcNode.connect(state.analyser);
+
+  // 錄 WebM/Opus
+  const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+    ? 'audio/webm;codecs=opus' : 'audio/webm';
+  state.chunks = [];
+  state.mediaRecorder = new MediaRecorder(state.stream, { mimeType: mime });
+  state.mediaRecorder.ondataavailable = e => { if (e.data.size) state.chunks.push(e.data); };
+  state.mediaRecorder.onstop = onRecordingStopped;
+  state.mediaRecorder.start(250);
+
+  state.frames = []; state.peakAbs = 0; state.clipCount = 0;
+  state.startTime = Date.now();
+  state.timerId = setInterval(updateTimer, 200);
+  meterLoop();
+
+  $('recordBtn').disabled = true;
+  $('recordBtn').classList.add('live');
+  $('stopBtn').disabled = false;
+  $('uploadBtn').disabled = true;
+  $('verdict').className = 'verdict';
+}
+
+function stopRecording() {
+  if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') state.mediaRecorder.stop();
+}
+
+function onRecordingStopped() {
+  cancelAnimationFrame(state.rafId);
+  clearInterval(state.timerId);
+  state.stream.getTracks().forEach(t => t.stop());
+  state.audioCtx.close();
+
+  state.blob = new Blob(state.chunks, { type: 'audio/webm' });
+  $('player').src = URL.createObjectURL(state.blob);
+  $('player').classList.remove('hidden');
+
+  $('recordBtn').classList.remove('live');
+  $('stopBtn').disabled = true;
+  $('playBtn').disabled = false;
+  $('retakeBtn').disabled = false;
+
+  showVerdict();
+}
+
+function updateTimer() {
+  const s = Math.floor((Date.now() - state.startTime) / 1000);
+  $('timer').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/* ================= 音量表與品質偵測 ================= */
+const DB_FLOOR = -60;
+const QUIET_DB = -35;   // 有效音框平均低於此 → 太小聲
+const LOUD_DB  = -6;    // 有效音框平均高於此 → 太大聲
+const VOICE_DB = -45;   // 高於此視為「有講話」的音框
+const CLIP_ABS = 0.985; // 取樣絕對值超過此 → 疑似爆音
+
+function meterLoop() {
+  const buf = new Float32Array(state.analyser.fftSize);
+  state.analyser.getFloatTimeDomainData(buf);
+
+  let sum = 0, framePeak = 0;
+  for (let i = 0; i < buf.length; i++) {
+    const a = Math.abs(buf[i]);
+    sum += buf[i] * buf[i];
+    if (a > framePeak) framePeak = a;
+    if (a >= CLIP_ABS) state.clipCount++;
+  }
+  const rms = Math.sqrt(sum / buf.length);
+  const db = rms > 0 ? 20 * Math.log10(rms) : DB_FLOOR;
+  state.frames.push(db);
+  if (framePeak > state.peakAbs) state.peakAbs = framePeak;
+
+  // 更新 UI
+  const pct = Math.min(100, Math.max(0, ((db - DB_FLOOR) / -DB_FLOOR) * 100));
+  const peakDb = state.peakAbs > 0 ? 20 * Math.log10(state.peakAbs) : DB_FLOOR;
+  const peakPct = Math.min(100, Math.max(0, ((peakDb - DB_FLOOR) / -DB_FLOOR) * 100));
+  $('vuFill').style.width = pct + '%';
+  $('vuPeak').style.left = peakPct + '%';
+  $('dbLabel').textContent = (db <= DB_FLOOR ? '-∞' : db.toFixed(1)) + ' dB';
+
+  // 即時提示
+  if (framePeak >= CLIP_ABS)      setVuStatus('bad',  '⚠ 偵測到爆音,請離麥克風遠一點');
+  else if (db > LOUD_DB)          setVuStatus('warn', '音量偏大,建議稍微降低');
+  else if (db > VOICE_DB)         setVuStatus('ok',   '音量正常');
+  else                            setVuStatus('',     '');
+
+  state.rafId = requestAnimationFrame(meterLoop);
+}
+
+function setVuStatus(cls, text) {
+  const el = $('vuStatus');
+  el.className = 'vu-status ' + cls;
+  el.textContent = text;
+}
+
+function showVerdict() {
+  const voiced = state.frames.filter(d => d > VOICE_DB);
+  const avg = voiced.length ? voiced.reduce((a, b) => a + b, 0) / voiced.length : DB_FLOOR;
+  const v = $('verdict');
+  let cls = 'ok', msg = `✔ 品質良好(平均 ${avg.toFixed(1)} dB),可以上傳。`;
+
+  if (state.clipCount > 8) {
+    cls = 'bad'; msg = `✖ 偵測到爆音(${state.clipCount} 個取樣削波),建議重錄。`;
+  } else if (!voiced.length || avg < QUIET_DB) {
+    cls = 'warn'; msg = `⚠ 音量太小(平均 ${avg.toFixed(1)} dB),建議靠近麥克風後重錄。`;
+  } else if (avg > LOUD_DB) {
+    cls = 'warn'; msg = `⚠ 音量太大(平均 ${avg.toFixed(1)} dB),建議離麥克風遠一點後重錄。`;
+  }
+
+  v.className = 'verdict show ' + cls;
+  v.textContent = msg;
+  $('uploadBtn').disabled = false; // 警告仍允許上傳,由錄音者判斷
+}
+
+/* ================= 上傳與自動跳句 ================= */
+$('uploadBtn').addEventListener('click', async () => {
+  if (!state.blob) return;
+  const s = state.scripts[state.idx];
+  const fd = new FormData();
+  fd.append('audio', state.blob, 'recording.webm');
+  fd.append('emotion', s.emotion);
+  fd.append('text', s.text);
+  fd.append('speaker', state.speaker);
+  fd.append('age', state.age);
+  fd.append('source', state.source);
+  fd.append('notes', state.notes);
+
+  $('uploadBtn').disabled = true;
+  $('uploadBtn').textContent = '上傳中…';
+
+  try {
+    const res = await fetch(`/api/upload?scriptId=${encodeURIComponent(s.id)}`, { method: 'POST', body: fd });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || '上傳失敗');
+    state.uploaded++;
+    state.dsLoaded = false; // 資料集清單下次打開時重新載入
+    toast(`已儲存 ${json.processed}`);
+    nextScript();
+  } catch (e) {
+    toast('上傳失敗:' + e.message);
+    $('uploadBtn').disabled = false;
+  } finally {
+    $('uploadBtn').textContent = '上傳並下一句';
+  }
+});
+
+function nextScript() {
+  state.idx++;
+  if (state.idx >= state.scripts.length) {
+    $('recorderCard').classList.add('hidden');
+    $('doneCard').classList.remove('hidden');
+    $('doneStats').textContent = `speaker: ${state.speaker} · 已上傳 ${state.uploaded} 句`;
+    $('progressFill').style.width = '100%';
+    return;
+  }
+  renderScript();
+}
+
+/* ================= 資料集面板 ================= */
+$('datasetBtn').addEventListener('click', () => {
+  const card = $('datasetCard');
+  card.classList.toggle('hidden');
+  if (!card.classList.contains('hidden') && !state.dsLoaded) loadRecordings();
+});
+
+$('dsRefreshBtn').addEventListener('click', loadRecordings);
+
+async function loadRecordings() {
+  const token = $('dsToken').value.trim();
+  const list = $('dsList');
+  list.innerHTML = '<p class="ds-empty">載入中…</p>';
+  try {
+    const res = await fetch(`/api/recordings?token=${encodeURIComponent(token)}`);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || '載入失敗');
+    state.dsLoaded = true;
+    $('datasetCount').textContent = `共 ${json.total} 句`;
+    if (!json.recordings.length) {
+      list.innerHTML = '<p class="ds-empty">尚無錄音,錄完第一句就會出現在這裡。</p>';
+      return;
+    }
+    list.innerHTML = '';
+    for (const r of json.recordings) {
+      const meta = EMOTION_META[r.emotion] || { zh: r.emotion, color: '#8f877a' };
+      const row = document.createElement('div');
+      row.className = 'ds-row';
+      row.innerHTML = `
+        <span class="ds-emo" style="color:${meta.color}">${meta.zh}</span>
+        <span class="ds-text" title="${escapeHtml(r.text)}">${escapeHtml(r.text)}</span>
+        <span class="ds-meta">${escapeHtml(r.speaker)} · ${(r.createdAt || '').slice(5, 16).replace('T', ' ')}</span>
+        <button class="ds-play" type="button">▶ 試聽</button>`;
+      row.querySelector('.ds-play').addEventListener('click', () => {
+        const p = $('dsPlayer');
+        p.classList.remove('hidden');
+        p.src = `/api/audio/${encodeURIComponent(r.filename)}?token=${encodeURIComponent($('dsToken').value.trim())}`;
+        p.play();
+      });
+      list.appendChild(row);
+    }
+  } catch (e) {
+    list.innerHTML = `<p class="ds-empty" style="color:var(--red)">✖ ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+document.querySelectorAll('.ds-dl').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const token = $('dsToken').value.trim();
+    const fmt = btn.dataset.format;
+    window.open(`/api/export?token=${encodeURIComponent(token)}&format=${fmt}`, '_blank');
+  });
+});
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* ================= 工具 ================= */
+let toastTimer;
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+</script>
+</body>
+</html>
